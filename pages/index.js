@@ -30,7 +30,7 @@ export default function IndexPage() {
       <div className="flex items-center mt-2">
         <h4 className="text-2xl font-semibold capitalize">First Turn:</h4>
         <select
-          className="w-20 border border-gray-300 shadow rounded ml-3"
+          className="w-20 border border-gray-300 shadow rounded ml-3 bg-white"
           value={firstTurn}
           onChange={e => setFirstTurn(e.target.value)}
         >

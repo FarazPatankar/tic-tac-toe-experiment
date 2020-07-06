@@ -1,73 +1,48 @@
 import { useState, useEffect } from 'react';
-import { chunk, uniq, compact } from 'lodash';
+import { uniq, compact } from 'lodash';
 import Link from 'next/link';
 
-const Square = ({ value, index, onClick }) => {
-  return (
-    <button
-      onClick={() => onClick(index)}
-      className={`border border-black h-16 w-16 text-lg font-semibold ${value === 'X' ? 'text-red-500' : 'text-blue-500'}`}
-    >
-      {value}
-    </button>
-  );
-}
+import {
+  getHorizontalLines, getVerticalLines, getFirstDiagonal, getSecondDiagonal
+} from '@/utils/lines';
 
-export default function BoardSizePage({ boardSize, firstTurn }) {
+import Square from '@/components/Square';
+
+export default function BoardSizePage({ boardSize, firstTurn, lines }) {
   const [currentTurn, setCurrentTurn] = useState(firstTurn);
   const [isComplete, setIsComplete] = useState(false);
   const [winner, setWinner] = useState(null);
+  const [winningIndices, setWinningIndices] = useState(null);
   const [squares, setSquares] = useState(Array(boardSize * boardSize).fill(null));
 
   useEffect(() => {
     if (compact(squares).length === 0) return;
-    const lines = [
-      ...chunk(squares, boardSize)
-    ];
-    // const horizontalLines = [];
-    // for(let i = 0; i < boardSize * boardSize; i += boardSize) {
-    //   let line = [];
-    //   for (let j = i; j < boardSize + i; j++) {
-    //     line.push(j)
-    //   }
-    //   horizontalLines.push(line);
-    // }
-
-    for (let i = 0; i < boardSize; i ++) {
-      let line = [];
-      for (let j = i; j < boardSize * boardSize; j += boardSize) {
-        line.push(squares[j]);
-      }
-      lines.push(line);
-    }
-
-    const firstDiagonal = [];
-    for (let i = 0; i < boardSize * boardSize; i += (boardSize + 1)) {
-      firstDiagonal.push(squares[i]);
-    }
-    lines.push(firstDiagonal);
-
-    const secondDiagonal = [];
-    for (let i = (boardSize - 1); i <= ((boardSize - 1) * boardSize); i += (boardSize - 1)) {
-      secondDiagonal.push(squares[i]);
-    }
-    lines.push(secondDiagonal);
 
     lines.forEach(line => {
-      if (compact(line).length === boardSize) {
-        if (uniq(line).length === 1) {
+      const values = [];
+      for (let i = 0; i < line.length; i++) {
+        const elementIndex = line[i];
+        const elementValue = squares[elementIndex];
+        values.push(elementValue);
+      }
+
+      // Check if all items are non-null
+      if (compact(values).length === boardSize) {
+        // Check if all items are the same
+        if (uniq(values).length === 1) {
           setWinner(currentTurn);
+          setWinningIndices(line);
           setIsComplete(true);
           return;
         }
       }
-    });
+    })
 
     if (compact(squares).length === boardSize * boardSize) {
       setIsComplete(true);
     }
     setCurrentTurn(currentTurn === 'X' ? 'Y' : 'X');
-  }, [squares])
+  }, [squares, lines])
 
   useEffect(() => {
     if (winner) alert(`${winner} is the winner!`);
@@ -93,6 +68,7 @@ export default function BoardSizePage({ boardSize, firstTurn }) {
   const onPlayAgain = () => {
     setSquares(Array(boardSize * boardSize).fill(null));
     setWinner(null);
+    setWinningIndices(null);
     setCurrentTurn(firstTurn);
     setIsComplete(false);
   }
@@ -101,7 +77,15 @@ export default function BoardSizePage({ boardSize, firstTurn }) {
   for (let i = 0; i < boardSize; i++) {
     const rowSquares = [];
     for (let j = 0; j < boardSize; j++) {
-      rowSquares.push(<Square key={j} value={squares[(i * boardSize) + j]} index={(i * boardSize) + j} onClick={onSquareClick} />)
+      rowSquares.push(
+        <Square
+          key={j}
+          value={squares[(i * boardSize) + j]}
+          index={(i * boardSize) + j}
+          onClick={onSquareClick}
+          winningIndices={winningIndices}
+        />
+      )
     }
     boardSquares.push(<div className="flex" key={i}>{rowSquares}</div>)
   }
@@ -136,5 +120,20 @@ export default function BoardSizePage({ boardSize, firstTurn }) {
 
 export async function getServerSideProps({ params, query }) {
   const { boardSize, firstTurn } = query;
-  return { props: { boardSize: Number(boardSize), firstTurn } };
+  const parsedBoardSize = Number(boardSize);
+
+  const lines = [
+    ...getHorizontalLines(parsedBoardSize),
+    ...getVerticalLines(parsedBoardSize),
+    getFirstDiagonal(parsedBoardSize),
+    getSecondDiagonal(parsedBoardSize),
+  ];
+
+  return {
+    props: {
+      boardSize: parsedBoardSize,
+      firstTurn,
+      lines
+    }
+  };
 }
